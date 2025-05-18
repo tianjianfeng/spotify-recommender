@@ -1,17 +1,26 @@
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession, functions => F}
+import cats.effect._
+import com.comcast.ip4s.{Host, Port}
 import org.apache.spark.ml.feature.{StandardScaler, StandardScalerModel, VectorAssembler}
-import org.apache.spark.ml.linalg.{Vector, Vectors}
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.{DataFrame, SparkSession, functions => F}
+import org.http4s.HttpRoutes
+import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
+import org.http4s.dsl.impl.QueryParamDecoderMatcher
+import org.http4s.dsl.io._
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.implicits._
+import org.http4s.circe._
+import io.circe.generic.auto._
 
-object Main extends App {
+object Main extends IOApp {
 
-  val spark: SparkSession = SparkSession.builder()
+  case class Recommendation(track_name: String, artist_name: String, genres: String, similarity: Double)
+
+  implicit val spark: SparkSession = SparkSession.builder()
     .appName("Spotify Track Similarity")
     .master("local[*]")
     .getOrCreate()
-
-  import spark.implicits._
 
   val dfRaw: DataFrame = spark.read
     .option("header", "true")
@@ -21,9 +30,9 @@ object Main extends App {
 
   val featureCols = Array("danceability", "energy", "valence", "tempo", "acousticness", "instrumentalness", "liveness")
 
-  def assembleAndScaleFeatures(df: DataFrame, inputCols: Array[String], spark: SparkSession): DataFrame = {
+  def assembleAndScaleFeatures(df: DataFrame): DataFrame = {
     val assembler: VectorAssembler = new VectorAssembler()
-      .setInputCols(inputCols)
+      .setInputCols(featureCols)
       .setOutputCol("features")
 
     val dfFeatures: DataFrame = assembler.transform(df)
@@ -38,16 +47,14 @@ object Main extends App {
     scalerModel.transform(dfFeatures)
   }
 
+    val dfScaled: DataFrame = assembleAndScaleFeatures(dfRaw)
   def getRecommendations(
-                          df: DataFrame,
                           queryTrackName: String,
-                          mode: String, // "all", "artist", or "genre"
-                          featureCols: Array[String]
-                        )(implicit spark: SparkSession): DataFrame = {
+                          mode: String // "all", "artist", or "genre"
+                        )(implicit spark: SparkSession): Seq[Recommendation] = {
     import spark.implicits._
 
     // Assemble + scale
-    val dfScaled = assembleAndScaleFeatures(df, featureCols, spark)
 
     // Get query track row
     val queryRow = dfScaled
@@ -80,7 +87,28 @@ object Main extends App {
       .withColumn("similarity", cosineUDF($"scaledFeatures"))
       .orderBy(F.desc("similarity"))
       .select("track_name", "artist_name", "genres", "similarity")
-      .limit(10)
+      .as[Recommendation]
+      .take(10)
+      .toSeq
+  }
+
+  val routes = HttpRoutes.of[IO] {
+    case GET -> Root / "recommend" :? TrackParam(track) +& ModeParam(mode) =>
+      val recs = getRecommendations(track, mode)
+      Ok(recs)
+  }
+
+  object TrackParam extends QueryParamDecoderMatcher[String]("track")
+  object ModeParam extends QueryParamDecoderMatcher[String]("mode")
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    EmberServerBuilder.default[IO]
+      .withHost(Host.fromString("0.0.0.0").get)
+      .withPort(Port.fromInt(8080).get)
+      .withHttpApp(routes.orNotFound)
+      .build
+      .use(_ => IO.never)
+      .as(ExitCode.Success)
   }
 
 //  val queryTrack = "One Last Time"
