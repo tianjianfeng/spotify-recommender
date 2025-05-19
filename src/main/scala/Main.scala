@@ -47,7 +47,15 @@ object Main extends IOApp {
     scalerModel.transform(dfFeatures)
   }
 
-    val dfScaled: DataFrame = assembleAndScaleFeatures(dfRaw)
+  val dfScaled: DataFrame = assembleAndScaleFeatures(dfRaw).cache()
+  dfScaled.count() // Forces evaluation and caching
+//  When Not to Cache?
+//  •	If the dataset is huge and doesn’t fit in memory.
+//  •	If it’s only used once.
+//  •	If your cluster has memory pressure.
+//
+//  In such cases, use .persist(StorageLevel.DISK_ONLY) or avoid caching altogether.
+
   def getRecommendations(
                           queryTrackName: String,
                           mode: String // "all", "artist", or "genre"
