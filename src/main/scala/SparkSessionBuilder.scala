@@ -13,13 +13,13 @@ case class SparkConfig(
 
 object ConfigValidator {
   def validateConfig(): Either[ConfigReaderFailures, SparkConfig] = {
+    // Load configuration from application.conf with environment variable overrides
     ConfigSource.default.at("spark").load[SparkConfig]
   }
 }
 
 object SparkSessionBuilder {
   def createSparkSession(): SparkSession = {
-    // Load configuration from application.conf with environment variable overrides
     val config = ConfigValidator.validateConfig() match {
       case Right(validConfig) => validConfig
       case Left(errors) =>
