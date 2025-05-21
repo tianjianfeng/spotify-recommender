@@ -12,6 +12,7 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-generic" % "0.14.10",
       "org.apache.spark" %% "spark-core" % "3.5.5",
       "org.apache.spark" %% "spark-sql" % "3.5.5",
-      "org.apache.spark" %% "spark-mllib" % "3.5.5"
+      "org.apache.spark" %% "spark-mllib" % "3.5.5",
+      "com.github.pureconfig" %% "pureconfig" % "0.17.6"
     )
   )
