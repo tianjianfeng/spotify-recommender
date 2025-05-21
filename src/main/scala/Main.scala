@@ -6,21 +6,20 @@ import org.http4s.implicits._
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
-    val spark = SparkSessionBuilder.createSparkSession()
-    sys.addShutdownHook {
-      spark.stop()
-    }
-    DataLoader.loadAndScaleData(spark).flatMap { df =>
-      val recService = new RecommendationService(df)
-      val routes = Routes(recService)(spark)
-
-      EmberServerBuilder.default[IO]
+    for {
+      spark <- SparkSessionBuilder.createSparkSession()
+      _ <- IO(sys.addShutdownHook {
+        spark.stop()
+      }) // Ensure the shutdown hook is executed as a side effect
+      df <- DataLoader.loadAndScaleData(spark)
+      recService = new RecommendationService(df)
+      routes = Routes(recService)(spark)
+      _ <- EmberServerBuilder.default[IO]
         .withHost(Host.fromString("0.0.0.0").get)
         .withPort(Port.fromInt(8080).get)
         .withHttpApp(routes.orNotFound)
         .build
         .use(_ => IO.never)
-        .as(ExitCode.Success)
-    }
+    } yield ExitCode.Success
   }
 }
