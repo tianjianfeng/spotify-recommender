@@ -1,3 +1,5 @@
+import sbtassembly.AssemblyPlugin.autoImport._
+
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
 ThisBuild / scalaVersion := "2.13.16"
@@ -16,3 +18,13 @@ lazy val root = (project in file("."))
       "com.github.pureconfig" %% "pureconfig" % "0.17.6"
     )
   )
+
+assembly / assemblyJarName := "spotify-recommender-0.1.0.jar"
+assembly / mainClass := Some("Main") // Replace with your main class
+
+assembly / assemblyMergeStrategy := {
+  // this will fix java.lang.ClassNotFoundException: csv.DefaultSource
+  case PathList("META-INF","services",xs @ _*) => MergeStrategy.filterDistinctLines // Added this
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
