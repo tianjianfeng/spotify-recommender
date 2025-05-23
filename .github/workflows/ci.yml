@@ -60,8 +60,11 @@ jobs:
       with:
         version: 'latest'
 
+    - name: Write kubeconfig to file
+      run: echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+
     - name: Deploy to Kubernetes
       env:
-        KUBECONFIG: ${{ secrets.KUBECONFIG }}
+        KUBECONFIG: ${{ github.workspace }}/kubeconfig.yaml
       run: |
         kubectl set image deployment/spotify-recommender spotify-recommender=${{ secrets.DOCKERHUB_USERNAME }}/spotify-recommender:${{ github.sha }}
