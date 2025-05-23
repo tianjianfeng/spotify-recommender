@@ -41,8 +41,8 @@ jobs:
       run: sbt assembly
 
     - name: Build Docker image
-      run: docker build -t spotify-recommender .
-#      run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/spotify-recommender:${{ github.sha }} .
+#      run: docker build -t spotify-recommender .
+      run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/spotify-recommender:${{ github.sha }} .
 
     # Optionally push Docker image to a registry here
     - name: Log in to Docker Hub
