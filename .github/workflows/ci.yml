@@ -21,8 +21,7 @@ jobs:
 
     - name: Install sbt
       run: |
-        curl -L -o sbt.deb https://github.com/sbt/sbt/releases/download/v1.10.11/sbt-1.10.11.deb
-        sudo dpkg -i sbt.deb
+        curl -sL https://www.scala-sbt.org/sbt-rpm.repo | sudo tee /etc/yum.repos.d/sbt-rpm.repo
         sudo apt-get update
         sudo apt-get install sbt
 
