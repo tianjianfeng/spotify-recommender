@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spotify-recommender
+  labels:
+    app: spotify-recommender
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spotify-recommender
+  template:
+    metadata:
+      labels:
+        app: spotify-recommender
+    spec:
+      containers:
+      - name: spotify-recommender
+        image: tianjianfeng/spotify-recommender:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPARK_APP_NAME
+          value: "SpotifyRecommender"
+        - name: SPARK_MASTER
+          value: "local[*]"
+        - name: CSV_PATH
+          value: "/app/spotifydataset.csv"
